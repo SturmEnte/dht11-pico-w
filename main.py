@@ -63,7 +63,7 @@ s.listen(1)
 while True:
     check_wifi()
     
-    s.settimeout(1.0)
+    s.settimeout(60)
     try:
         cl, addr = s.accept()
         print('Request from: ', addr)
