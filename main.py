@@ -7,7 +7,9 @@ import time
 import socket
 import json
 
-# Meassure function
+led = machine.Pin('LED', machine.Pin.OUT)
+led.on()
+
 def meassure():
     try:
         return ((sensor.temperature), (sensor.humidity))
@@ -27,20 +29,21 @@ def connect_to_wifi():
 
     if wlan.status() != 3:
         print('network connection failed')
-    
+
 def check_wifi():
     if not wlan.isconnected():
+        led.on()
         print("Disconnected from wifi")
         print('Reconnecting to wifi...')
         while not wlan.isconnected():
             connect_to_wifi()
         print("Reconnected to the wifi")
         print( 'Ip = ' + wlan.ifconfig()[0] )
+        led.off()
 
 pin = Pin(28, Pin.OUT, Pin.PULL_DOWN)
 sensor = DHT11(pin)
 
-# Connect to wifi
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 connect_to_wifi()
@@ -49,6 +52,7 @@ if wlan.isconnected():
     while not wlan.isconnected():
         connect_to_wifi()
     print('Connected to wifi')
+    led.off()
 
 addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
 
