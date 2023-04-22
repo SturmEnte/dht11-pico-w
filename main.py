@@ -12,30 +12,43 @@ def meassure():
     try:
         return ((sensor.temperature), (sensor.humidity))
     except:
-        return 
+        return
+    
+def connect_to_wifi():
+    wlan.connect(secrets.SSID, secrets.PASSWORD)
+
+    max_wait = 10
+    while max_wait > 0:
+        if wlan.status() < 0 or wlan.status() >= 3:
+            break
+        max_wait -= 1
+        print('waiting for connection...')
+        time.sleep(1)
+
+    if wlan.status() != 3:
+        print('network connection failed')
+    
+def check_wifi():
+    if not wlan.isconnected():
+        print("Disconnected from wifi")
+        print('Reconnecting to wifi...')
+        while not wlan.isconnected():
+            connect_to_wifi()
+        print("Reconnected to the wifi")
+        print( 'Ip = ' + wlan.ifconfig()[0] )
 
 pin = Pin(28, Pin.OUT, Pin.PULL_DOWN)
 sensor = DHT11(pin)
 
-# Connect wo wlan
+# Connect to wifi
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
-wlan.connect(secrets.SSID, secrets.PASSWORD)
+connect_to_wifi()
 
-max_wait = 10
-while max_wait > 0:
-    if wlan.status() < 0 or wlan.status() >= 3:
-        break
-    max_wait -= 1
-    print('waiting for connection...')
-    time.sleep(1)
-
-if wlan.status() != 3:
-    raise RuntimeError('network connection failed')
-else:
-    print('connected')
-    status = wlan.ifconfig()
-    print( 'ip = ' + status[0] )
+if wlan.isconnected():
+    while not wlan.isconnected():
+        connect_to_wifi()
+    print('Connected to wifi')
 
 addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
 
@@ -44,11 +57,13 @@ s.bind(addr)
 s.listen(1)
 
 while True:
+    check_wifi()
+    
+    s.settimeout(1.0)
     try:
         cl, addr = s.accept()
-        print('client connected from', addr)
+        print('Request from: ', addr)
         request = cl.recv(1024)
-        print(request)
         
         m = meassure()
     
@@ -56,11 +71,15 @@ while True:
             cl.send('HTTP/1.0 200 OK\r\nContent-type: application/json\r\n\r\n')
             cl.send("{\"temperature\":%s, \"humidity\":%s}" % (m[0], m[1]))
         else:
-            cl.send('HTTP/1.0 500 OK\r\nContent-type: application/json\r\n\r\n')
+            cl.send('HTTP/1.0 500 Internal Server Error\r\nContent-type: application/json\r\n\r\n')
             cl.send("{\"error\":\"Error while reading sensor data\"}")
         
         cl.close()
         
     except OSError as e:
-        cl.close()
-        print('connection closed')
+        try:
+            cl.close()
+            print('connection closed')
+        except:
+            pass
+        
